@@ -1,0 +1,199 @@
+<html>
+    <head>
+        <title>free nin10 decoder, suck it nin10news</title>
+        <style>
+            @font-face {
+                font-family: Downlink;
+                src: url('Downlink.otf');
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+                color: #fff;
+                background: #000;
+            }
+
+            #intro {
+                width: 100%;
+                height: calc(100% - 200px);
+                background: #000;
+                color: #fff;
+            }
+
+            #text_entry {
+                width: calc(100% - 110px);
+                height: 50px;
+                background: #111;
+                color: #888;
+                border-radius: 10px;
+                padding: 10px;
+                margin: 10px;
+                text-align: center;
+                outline: none;
+            }
+
+            #text_decode {
+                width: 80px;
+                height: 50px;
+                border-radius: 10px;
+                background: #444;
+                border: none;
+                color: #fff;
+            }
+
+            #output {
+                height: 100px;
+                width: 100%;
+                text-align: center;
+            }
+
+            .out_link {
+                width: 100%;
+                text-align: center;
+                line-height: 100px;
+                font-size: 200%;
+                color: #fff;
+            }
+        </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js" integrity="sha512-nOQuvD9nKirvxDdvQ9OMqe2dgapbPB7vYAMrzJihw5m+aNcf0dX53m6YxM4LgA9u8e9eg9QX+/+mPu8kCNpV2A==" crossorigin="anonymous"></script>
+        <script>
+            // song artist https://freemusicarchive.org/music/sawsquarenoise#contact-artist
+
+            function decode(data) {
+                var decodedString = (CryptoJS.AES.decrypt(data,"/")).toString(CryptoJS.enc.Utf8);
+                return decodedString;
+            }
+            
+
+            text_scrolls = [
+                'mnemonicpunk presents the free nin10 decoder',
+                'just paste some letters and numbers down there, click decode and booya',
+                'no ads needed, this tool is hosted for free',
+                'looks much nicer, too',
+                'have a good time with whatever you need this for',
+                'and remember to social distance properly',
+                'the nice tune you are listening to was made by sawsquarenoise'
+            ]
+
+            class Intro {
+                constructor() {
+                    this.canvas = document.getElementById('intro');
+                    this.ctx = this.canvas.getContext('2d');
+
+                    var soundFile = document.createElement("audio");
+                    soundFile.preload = "auto";
+                    soundFile.loop = "true";
+                    soundFile.src = "bgm.mp3";
+                    document.addEventListener('click', function() {
+                        soundFile.play();
+                    });
+                    
+                    this.phase = 0;
+                    this.text = text_scrolls[0];
+                    this.text_index = 0;
+                    this.text_offset = 0;
+
+                    let self = this;
+                    let _draw = function() {
+                        self.draw();
+                        window.requestAnimationFrame(_draw);
+                    }
+                    let _tick = function() {
+                        self.tick();
+                        window.setTimeout(_tick, 1000/60);
+                    }
+
+                    _draw();
+                    _tick();
+
+                    window.addEventListener('resize', function() {
+                        self.resize();
+                    });
+                    this.resize();
+
+                    this.text_offset = this.canvas.width;
+                }
+                draw() {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    let g = (this.phase*4)%60;
+                    
+                    this.ctx.strokeStyle = "#88f";
+                    this.ctx.beginPath();
+
+                    for (let i=0; i<this.canvas.width+60; i+=60) {
+                        let screen_off = (i/this.canvas.width);
+                        this.ctx.moveTo(i - g, this.canvas.height/2);
+                        this.ctx.lineTo((i - g)*2 - this.canvas.width/2, this.canvas.height);
+
+                    }
+                    for (let i=60; i<this.canvas.height/2+60; i*= 1.2) {
+                        this.ctx.moveTo(0, this.canvas.height/2 + i - 60);
+                        this.ctx.lineTo(this.canvas.width, this.canvas.height/2 + i-60);
+                    }
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#fff';
+
+                    this.drawTextSine(this.text, this.text_offset, this.canvas.height/2, (2*Math.PI)*(-1 + this.phase/120));
+                }
+                tick() {
+                    this.phase+=1;
+                    if (this.phase > 120) {
+                        this.phase = 0;
+                    }
+                    
+                    this.text_offset-=8;
+                    if (this.text_offset < -(this.text.length * 55)) {
+                        this.text_offset = this.canvas.width;
+                        this.text_index++;
+                        if (this.text_index >= text_scrolls.length) {
+                            this.text_index = 0;
+                        }
+                        this.text = text_scrolls[this.text_index];
+                    }
+                }
+                resize() {
+                    this.canvas.width = this.canvas.clientWidth;
+                    this.canvas.height = this.canvas.clientHeight;
+                }
+                drawText(text, x, y) {
+                    this.ctx.font = "72px Downlink";
+                    this.ctx.fillStyle = "#fff";
+
+                    let d = this.ctx.measureText(text);
+
+                    this.ctx.fillText(text, x - d.width/2, y);
+                }
+                drawTextSine(text, x, y, phase) {
+                    for (let i=0; i<text.length; i++) {
+                        this.drawText(text[i], x + (55*i), y + 30 + (Math.sin(phase + (i/10) * Math.PI))*60);
+                    }
+                }
+            }
+
+            window.addEventListener('load', function() {
+                    let intro = new Intro();
+
+                    document.querySelector('#text_decode').addEventListener('click', function() {
+                    let data = document.querySelector('#text_entry').value.trim();
+                    let result = decode(data);
+                    if (data != "") {
+                        let o = document.querySelector('#output');
+                        o.innerHTML = "<a class='out_link' href='" + result + "' target='_blank'>" + result + "</a>";
+                    }
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <canvas id="intro"></canvas>
+        <div id="inputs">
+            <input type="text" id="text_entry" value=""><input type="button" value="Decode" id="text_decode">
+        </div>
+        <div id="output">
+
+        </div>
+    </body>
+</html>
